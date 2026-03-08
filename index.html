@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Amex Benefits Dashboard</title>
+
+<!-- PWA / Mobile App Support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Amex Credits">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f1117">
+<meta name="application-name" content="Amex Credits">
+<link rel="manifest" href="manifest.json">
+
+<!-- Favicon / App Icon (inline SVG data URI) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f1117' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' font-size='50' fill='gold'>$</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f1117' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' font-size='50' fill='gold'>$</text></svg>">
+<style>
+  :root {
+    --platinum: #E5E4E2;
+    --platinum-dark: #8A8D8F;
+    --gold: #FFD700;
+    --gold-dark: #B8860B;
+    --biz-plat: #2C2C2C;
+    --biz-plat-accent: #C0C0C0;
+    --green: #28a745;
+    --yellow: #ffc107;
+    --red: #dc3545;
+    --blue: #007bff;
+    --bg: #0f1117;
+    --card-bg: #1a1d26;
+    --text: #e8e8e8;
+    --text-muted: #8a8f98;
+    --border: #2a2d36;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding: 30px;
+    background: linear-gradient(135deg, #1a1d26, #252830);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+  }
+
+  .header h1 {
+    font-size: 2em;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--gold), var(--platinum));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .header p { color: var(--text-muted); font-size: 0.95em; }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .summary-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .summary-card .label { font-size: 0.8em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .summary-card .value { font-size: 1.8em; font-weight: 700; }
+  .summary-card .sub { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { border-color: var(--gold-dark); color: var(--text); }
+  .tab.active { background: var(--gold-dark); color: #fff; border-color: var(--gold-dark); }
+
+  .card-section { display: none; }
+  .card-section.active { display: block; }
+
+  .credit-card-visual {
+    background: linear-gradient(135deg, #2c3e50, #1a1d26);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .credit-card-visual.platinum-card { background: linear-gradient(135deg, #8A8D8F, #C0C0C0, #8A8D8F); color: #1a1a1a; }
+  .credit-card-visual.gold-card { background: linear-gradient(135deg, #B8860B, #FFD700, #B8860B); color: #1a1a1a; }
+  .credit-card-visual.biz-plat-card { background: linear-gradient(135deg, #1a1a2e, #2C2C2C, #1a1a2e); color: #e8e8e8; }
+
+  .credit-card-visual .card-name { font-size: 1.3em; font-weight: 700; margin-bottom: 4px; }
+  .credit-card-visual .card-fee { font-size: 0.85em; opacity: 0.8; }
+  .credit-card-visual .card-total { position: absolute; right: 28px; top: 28px; text-align: right; }
+  .credit-card-visual .card-total .amount { font-size: 1.6em; font-weight: 700; }
+  .credit-card-visual .card-total .label { font-size: 0.75em; opacity: 0.7; }
+
+  .credits-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 30px;
+  }
+
+  .credit-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: 40px 1fr 120px 130px 100px;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+  }
+
+  .credit-row:hover { border-color: var(--gold-dark); transform: translateY(-1px); }
+
+  .credit-icon { font-size: 1.4em; text-align: center; }
+
+  .credit-info h3 { font-size: 0.95em; font-weight: 600; margin-bottom: 2px; }
+  .credit-info p { font-size: 0.8em; color: var(--text-muted); }
+
+  .credit-amount { font-size: 1.1em; font-weight: 700; text-align: right; color: var(--green); }
+
+  .credit-reset {
+    text-align: center;
+    font-size: 0.78em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+  }
+
+  .credit-status { text-align: center; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+  }
+
+  .status-badge.unused { background: rgba(220,53,69,0.15); color: var(--red); }
+  .status-badge.partial { background: rgba(255,193,7,0.15); color: var(--yellow); }
+  .status-badge.used { background: rgba(40,167,69,0.15); color: var(--green); }
+
+  .multi-status { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .multi-status .period-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.68em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 38px;
+    user-select: none;
+  }
+  .period-badge .period-label { text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1px; font-size: 0.85em; }
+  .period-badge .period-status { font-size: 1.1em; }
+  .period-badge.unused { background: rgba(220,53,69,0.12); color: var(--red); border: 1px solid rgba(220,53,69,0.25); }
+  .period-badge.used { background: rgba(40,167,69,0.12); color: var(--green); border: 1px solid rgba(40,167,69,0.25); }
+  .period-badge:hover { transform: scale(1.08); }
+
+  /* Compact monthly grid for 12-month credits */
+  .multi-status.monthly-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+  }
+  .multi-status.monthly-grid .period-badge {
+    padding: 3px 4px;
+    min-width: unset;
+    font-size: 0.6em;
+    border-radius: 5px;
+  }
+  .multi-status.monthly-grid .period-badge .period-label { font-size: 0.8em; }
+  .multi-status.monthly-grid .period-badge .period-status { font-size: 0.95em; }
+
+  /* Current period highlight - pulsing gold border for unused credits in the active period */
+  .period-badge.current-period.unused {
+    border: 2px solid var(--gold);
+    box-shadow: 0 0 8px rgba(255,215,0,0.4);
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .period-badge.current-period.used {
+    border: 1px solid rgba(40,167,69,0.25);
+    box-shadow: none;
+    animation: none;
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 6px rgba(255,215,0,0.3); }
+    50% { box-shadow: 0 0 14px rgba(255,215,0,0.6); }
+  }
+
+  /* Row-level "use now" banner for credits with unused current periods */
+  .credit-row.has-unused-current { border-left: 3px solid var(--gold); }
+  .use-now-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: rgba(255,215,0,0.15);
+    color: var(--gold);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  .tips-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .tips-section h2 {
+    font-size: 1.15em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tip-item {
+    padding: 14px 16px;
+    background: rgba(255,215,0,0.04);
+    border: 1px solid rgba(255,215,0,0.1);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 0.88em;
+    line-height: 1.6;
+  }
+
+  .tip-item strong { color: var(--gold); }
+  .tip-item .tip-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-right: 6px;
+  }
+
+  .tip-tag.money { background: rgba(40,167,69,0.15); color: var(--green); }
+  .tip-tag.action { background: rgba(0,123,255,0.15); color: var(--blue); }
+  .tip-tag.warning { background: rgba(220,53,69,0.15); color: var(--red); }
+  .tip-tag.stack { background: rgba(255,193,7,0.15); color: var(--yellow); }
+
+  .enrollment-checklist {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .enrollment-checklist h2 { font-size: 1.15em; margin-bottom: 16px; }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88em;
+  }
+
+  .check-item:last-child { border-bottom: none; }
+
+  .check-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--gold-dark);
+    cursor: pointer;
+  }
+
+  .check-item label { cursor: pointer; flex: 1; }
+  .check-item .check-card { font-size: 0.7em; color: var(--text-muted); padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; }
+
+  .calendar-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+
+  .calendar-section h2 { font-size: 1.15em; margin-bottom: 16px; }
+
+  .timeline { position: relative; }
+
+  .timeline-item {
+    display: flex;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88em;
+  }
+
+  .timeline-item:last-child { border-bottom: none; }
+
+  .timeline-date {
+    min-width: 90px;
+    font-weight: 600;
+    color: var(--gold);
+  }
+
+  .timeline-events { flex: 1; }
+  .timeline-event { margin-bottom: 4px; color: var(--text-muted); }
+  .timeline-event strong { color: var(--text); }
+
+  .search-bar {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.9em;
+    margin-bottom: 20px;
+    outline: none;
+  }
+
+  .search-bar:focus { border-color: var(--gold-dark); }
+
+  @media (max-width: 768px) {
+    .credit-row {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .credit-amount, .credit-reset, .credit-status { text-align: left; }
+    .summary-row { grid-template-columns: 1fr 1fr; }
+  }
+
+  .hidden { display: none !important; }
+
+  .section-title {
+    font-size: 1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Amex Benefits Dashboard</h1>
+  <p>Track every credit, deadline, and hidden perk across all your cards &mdash; Updated March 2026</p>
+</div>
+
+<!-- Summary Row -->
+<div class="summary-row">
+  <div class="summary-card">
+    <div class="label">Total Annual Credits</div>
+    <div class="value" style="color: var(--green);">$5,478+</div>
+    <div class="sub">Across all 3 cards</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Combined Annual Fees</div>
+    <div class="value" style="color: var(--red);">$2,115</div>
+    <div class="sub">$895 + $325 + $895</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Net Value (Credits - Fees)</div>
+    <div class="value" style="color: var(--green);">+$3,363</div>
+    <div class="sub">If you use everything</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Cards Tracked</div>
+    <div class="value">3</div>
+    <div class="sub">Platinum &bull; Gold &bull; Biz Platinum</div>
+  </div>
+</div>
+
+<!-- Search -->
+<input type="text" class="search-bar" id="searchBar" placeholder="Search credits, tips, or benefits..." oninput="filterAll()">
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('platinum')">Platinum Card</div>
+  <div class="tab" onclick="switchTab('gold')">Gold Card</div>
+  <div class="tab" onclick="switchTab('bizplat')">Business Platinum</div>
+  <div class="tab" onclick="switchTab('tips')">Tips & Tricks</div>
+  <div class="tab" onclick="switchTab('enrollment')">Enrollment Checklist</div>
+  <div class="tab" onclick="switchTab('calendar')">Reset Calendar</div>
+</div>
+
+<!-- ===== PLATINUM SECTION ===== -->
+<div class="card-section active" id="section-platinum">
+  <div class="credit-card-visual platinum-card">
+    <div class="card-name">The Platinum Card</div>
+    <div class="card-fee">Annual Fee: $895</div>
+    <div class="card-total">
+      <div class="label">Total Credits</div>
+      <div class="amount">$2,729+</div>
+    </div>
+  </div>
+
+  <div class="section-title">All Credits</div>
+  <div class="credits-grid">
+
+    <div class="credit-row" data-credit-id="plat-hotel" data-search="hotel fine hotels resorts travel collection semi-annual">
+      <div class="credit-icon">ð¨</div>
+      <div class="credit-info">
+        <h3>Hotel Credit (FHR / Hotel Collection)</h3>
+        <p>Up to $300 semi-annually on prepaid bookings via Amex Travel. Hotel Collection requires 2-night min.</p>
+      </div>
+      <div class="credit-amount">$600/yr</div>
+      <div class="credit-reset">Semi-Annual<br>$300 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H2</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-resy" data-search="resy dining restaurant quarterly">
+      <div class="credit-icon">ð½ï¸</div>
+      <div class="credit-info">
+        <h3>Resy Dining Credit</h3>
+        <p>Up to $100/quarter at any U.S. Resy-affiliated restaurant. No reservation required. Enrollment required.</p>
+      </div>
+      <div class="credit-amount">$400/yr</div>
+      <div class="credit-reset">Quarterly<br>$100 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q2</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q3</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q4</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-lulu" data-search="lululemon shopping clothes quarterly">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Lululemon Credit</h3>
+        <p>Up to $75/quarter at U.S. Lululemon retail stores (excl. outlets) and online. Enrollment required.</p>
+      </div>
+      <div class="credit-amount">$300/yr</div>
+      <div class="credit-reset">Quarterly<br>$75 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q2</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q3</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q4</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-entertainment" data-search="digital entertainment streaming monthly youtube disney hulu peacock paramount espn nyt wsj">
+      <div class="credit-icon">ðº</div>
+      <div class="credit-info">
+        <h3>Digital Entertainment Credit</h3>
+        <p>Up to $25/mo on Disney+, Hulu, ESPN+, Peacock, Paramount+, YouTube Premium/TV, NYT, WSJ. Enrollment required. Must pay provider directly (not via Apple/Amazon).</p>
+      </div>
+      <div class="credit-amount">$300/yr</div>
+      <div class="credit-reset">Monthly<br>1st of each month</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-equinox" data-search="equinox gym fitness annual">
+      <div class="credit-icon">ðï¸</div>
+      <div class="credit-info">
+        <h3>Equinox Credit</h3>
+        <p>Up to $300/year for Equinox gym or Equinox+ app memberships. Must be auto-renewing.</p>
+      </div>
+      <div class="credit-amount">$300/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-clear" data-search="clear plus airport security tsa annual">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>CLEAR+ Credit</h3>
+        <p>Up to $209 statement credit to cover CLEAR+ membership per calendar year.</p>
+      </div>
+      <div class="credit-amount">$209/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-airline" data-search="airline fee incidental selected annual">
+      <div class="credit-icon">âï¸</div>
+      <div class="credit-info">
+        <h3>Airline Fee Credit</h3>
+        <p>Up to $200/year for incidental fees on your selected airline. Must choose one airline. Covers bags, seat upgrades, etc.</p>
+      </div>
+      <div class="credit-amount">$200/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-uber-cash" data-search="uber cash monthly ride eats food delivery">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Uber Cash</h3>
+        <p>$15/month + $20 bonus in December = $200/year. Expires end of each month. Use for Uber rides or Uber Eats.</p>
+      </div>
+      <div class="credit-amount">$200/yr</div>
+      <div class="credit-reset">Monthly<br>Use it or lose it!</div>
+      <div class="credit-status">
+        <div class="multi-status monthly-grid">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jan</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Feb</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Mar</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Apr</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">May</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jun</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jul</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Aug</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Sep</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Oct</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Nov</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Dec</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-walmart" data-search="walmart plus membership monthly grocery delivery">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Walmart+ Membership Credit</h3>
+        <p>$12.95/month statement credit for Walmart+ monthly membership. Includes free delivery, fuel discounts, AND free Peacock or Paramount+!</p>
+      </div>
+      <div class="credit-amount">~$155/yr</div>
+      <div class="credit-reset">Monthly<br>Auto-renew</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-uber-one" data-search="uber one membership annual">
+      <div class="credit-icon">ð±</div>
+      <div class="credit-info">
+        <h3>Uber One Membership Credit</h3>
+        <p>Up to $120/year when paying for auto-renewing Uber One with your Platinum Card. Stacks with Uber Cash above.</p>
+      </div>
+      <div class="credit-amount">$120/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-saks" data-search="saks fifth avenue shopping semi-annual">
+      <div class="credit-icon">ðï¸</div>
+      <div class="credit-info">
+        <h3>Saks Fifth Avenue Credit</h3>
+        <p>Up to $50 semi-annually ($100/year). Jan-Jun and Jul-Dec periods.</p>
+      </div>
+      <div class="credit-amount">$100/yr</div>
+      <div class="credit-reset">Semi-Annual<br>$50 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H2</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-global-entry" data-search="global entry tsa precheck trusted traveler">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Global Entry / TSA PreCheck</h3>
+        <p>$120 for Global Entry (every 4 years) or $85 for TSA PreCheck (every 4.5 years).</p>
+      </div>
+      <div class="credit-amount">$120</div>
+      <div class="credit-reset">Every 4 yrs</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="plat-oura" data-search="oura ring health tracker wearable">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>OURA Ring Credit</h3>
+        <p>Statement credit for OURA Ring purchases through ouraring.com. Enrollment required. (New benefit)</p>
+      </div>
+      <div class="credit-amount">TBD</div>
+      <div class="credit-reset">Calendar Year</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== GOLD SECTION ===== -->
+<div class="card-section" id="section-gold">
+  <div class="credit-card-visual gold-card">
+    <div class="card-name">The Gold Card</div>
+    <div class="card-fee">Annual Fee: $325</div>
+    <div class="card-total">
+      <div class="label">Total Credits</div>
+      <div class="amount">$424+</div>
+    </div>
+  </div>
+
+  <div class="section-title">All Credits</div>
+  <div class="credits-grid">
+
+    <div class="credit-row" data-credit-id="gold-uber-cash" data-search="uber cash gold monthly ride eats">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Uber Cash</h3>
+        <p>$10/month in Uber Cash for Uber Eats or Uber rides. Expires end of each month.</p>
+      </div>
+      <div class="credit-amount">$120/yr</div>
+      <div class="credit-reset">Monthly<br>Use it or lose it!</div>
+      <div class="credit-status">
+        <div class="multi-status monthly-grid">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jan</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Feb</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Mar</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Apr</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">May</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jun</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Jul</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Aug</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Sep</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Oct</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Nov</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Dec</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="gold-dining" data-search="dining grubhub cheesecake factory goldbelly wine five guys monthly">
+      <div class="credit-icon">ð½ï¸</div>
+      <div class="credit-info">
+        <h3>Dining Credit</h3>
+        <p>Up to $10/month at Grubhub, The Cheesecake Factory, Goldbelly, Wine.com, or Five Guys. Enrollment required.</p>
+      </div>
+      <div class="credit-amount">$120/yr</div>
+      <div class="credit-reset">Monthly<br>1st of each month</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="gold-resy" data-search="resy restaurant dining semi-annual gold">
+      <div class="credit-icon">ð·</div>
+      <div class="credit-info">
+        <h3>Resy Dining Credit</h3>
+        <p>Up to $50 semi-annually at U.S. Resy-affiliated restaurants and eligible Resy purchases. Enrollment required.</p>
+      </div>
+      <div class="credit-amount">$100/yr</div>
+      <div class="credit-reset">Semi-Annual<br>$50 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H2</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="gold-dunkin" data-search="dunkin donuts coffee monthly">
+      <div class="credit-icon">â</div>
+      <div class="credit-info">
+        <h3>Dunkin' Credit</h3>
+        <p>Up to $7/month at U.S. Dunkin' locations. Enrollment required.</p>
+      </div>
+      <div class="credit-amount">$84/yr</div>
+      <div class="credit-reset">Monthly<br>1st of each month</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== BUSINESS PLATINUM SECTION ===== -->
+<div class="card-section" id="section-bizplat">
+  <div class="credit-card-visual biz-plat-card">
+    <div class="card-name">Business Platinum Card</div>
+    <div class="card-fee">Annual Fee: $895</div>
+    <div class="card-total">
+      <div class="label">Total Credits</div>
+      <div class="amount">$2,489+</div>
+    </div>
+  </div>
+
+  <div class="section-title">All Credits</div>
+  <div class="credits-grid">
+
+    <div class="credit-row" data-credit-id="biz-hotel" data-search="hotel fine hotels resorts travel collection semi-annual business">
+      <div class="credit-icon">ð¨</div>
+      <div class="credit-info">
+        <h3>Hotel Credit (FHR / Hotel Collection)</h3>
+        <p>Up to $300 semi-annually on prepaid bookings via Amex Travel. Hotel Collection requires 2-night min.</p>
+      </div>
+      <div class="credit-amount">$600/yr</div>
+      <div class="credit-reset">Semi-Annual<br>$300 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">H2</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-indeed" data-search="indeed hiring recruiting job posting quarterly business">
+      <div class="credit-icon">ð¼</div>
+      <div class="credit-info">
+        <h3>Indeed Credit</h3>
+        <p>Up to $90/quarter for purchases at Indeed. Great for job postings and hiring.</p>
+      </div>
+      <div class="credit-amount">$360/yr</div>
+      <div class="credit-reset">Quarterly<br>$90 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q2</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q3</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q4</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-adobe" data-search="adobe creative cloud software business annual">
+      <div class="credit-icon">ð¨</div>
+      <div class="credit-info">
+        <h3>Adobe Credit</h3>
+        <p>$250 statement credit when you spend $600+ at Adobe. One-time per calendar year.</p>
+      </div>
+      <div class="credit-amount">$250/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-clear" data-search="clear plus airport security business annual">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>CLEAR+ Credit</h3>
+        <p>Up to $209 statement credit for CLEAR+ membership per calendar year.</p>
+      </div>
+      <div class="credit-amount">$209/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-airline" data-search="airline fee incidental selected annual business">
+      <div class="credit-icon">âï¸</div>
+      <div class="credit-info">
+        <h3>Airline Fee Credit</h3>
+        <p>Up to $200/year for incidental fees on your selected airline. Must choose one airline.</p>
+      </div>
+      <div class="credit-amount">$200/yr</div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-hilton" data-search="hilton hotel quarterly business">
+      <div class="credit-icon">ð¢</div>
+      <div class="credit-info">
+        <h3>Hilton Credit</h3>
+        <p>Up to $50/quarter at Hilton properties. Great for business travel stays.</p>
+      </div>
+      <div class="credit-amount">$200/yr</div>
+      <div class="credit-reset">Quarterly<br>$50 each</div>
+      <div class="credit-status">
+        <div class="multi-status">
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q1</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q2</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q3</span><span class="period-status">â</span></div>
+          <div class="period-badge unused" onclick="togglePeriod(this)"><span class="period-label">Q4</span><span class="period-status">â</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-dell" data-search="dell technology computer equipment business annual">
+      <div class="credit-icon">ð»</div>
+      <div class="credit-info">
+        <h3>Dell Technologies Credit</h3>
+        <p>Up to $150/year on U.S. Dell purchases. BONUS: Spend $5,000+ at Dell to get an additional $1,000 credit!</p>
+      </div>
+      <div class="credit-amount">$150/yr<br><small style="color:var(--yellow)">+$1K bonus</small></div>
+      <div class="credit-reset">Calendar Year<br>Jan 1</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-wireless" data-search="wireless phone cell mobile monthly business">
+      <div class="credit-icon">ð¶</div>
+      <div class="credit-info">
+        <h3>Wireless Credit</h3>
+        <p>Up to $10/month on wireless phone service purchased directly from a U.S. provider.</p>
+      </div>
+      <div class="credit-amount">$120/yr</div>
+      <div class="credit-reset">Monthly<br>1st of each month</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+    <div class="credit-row" data-credit-id="biz-global-entry" data-search="global entry tsa precheck trusted traveler business">
+      <div class="credit-icon">ð</div>
+      <div class="credit-info">
+        <h3>Global Entry / TSA PreCheck</h3>
+        <p>$120 for Global Entry (every 4 years) or $85 for TSA PreCheck (every 4.5 years).</p>
+      </div>
+      <div class="credit-amount">$120</div>
+      <div class="credit-reset">Every 4 yrs</div>
+      <div class="credit-status"><span class="status-badge unused" onclick="cycleStatus(this)">Not Used</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== TIPS & TRICKS SECTION ===== -->
+<div class="card-section" id="section-tips">
+  <div class="tips-section">
+    <h2>ð° Walmart+ / Peacock / Paramount+ Stack</h2>
+
+    <div class="tip-item" data-search="walmart plus peacock paramount free streaming stack">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Walmart+ is FREE via your Platinum Card ($12.95/mo credit).</strong> Inside Walmart+, you get <strong>Peacock Premium OR Paramount+ (ad-supported)</strong> completely free. That's a hidden ~$80/year streaming benefit on top of the Walmart+ value. Go to your Walmart+ Benefits Hub to activate.
+    </div>
+
+    <div class="tip-item" data-search="walmart plus switch streaming 90 days peacock paramount rotate">
+      <span class="tip-tag action">ACTION</span>
+      <strong>You can switch between Peacock and Paramount+ every 90 days.</strong> Rotate based on what shows/movies you want to watch each quarter. Set a calendar reminder!
+    </div>
+
+    <div class="tip-item" data-search="walmart plus cancel existing subscription first peacock paramount">
+      <span class="tip-tag warning">WARNING</span>
+      <strong>Cancel your existing Peacock/Paramount+ subscription FIRST.</strong> The free Walmart+ streaming benefit won't activate if you have an active paid subscription. Let it expire, then activate through Walmart+.
+    </div>
+
+    <div class="tip-item" data-search="walmart plus delivery fuel savings grocery free shipping">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Don't forget other Walmart+ perks:</strong> Free delivery on groceries ($35+ orders), fuel savings (up to 10&cent;/gal at Exxon, Mobil, Walmart & Murphy stations), free shipping with no order minimum, mobile scan & go, and Paramount+/Peacock streaming.
+    </div>
+  </div>
+
+  <div class="tips-section">
+    <h2>ð§  Platinum Card Pro Tips</h2>
+
+    <div class="tip-item" data-search="digital entertainment pay directly not apple amazon">
+      <span class="tip-tag warning">WARNING</span>
+      <strong>Subscribe to streaming services DIRECTLY through their website</strong> (e.g., disneyplus.com, hulu.com). Subscriptions paid via Apple App Store or Amazon won't trigger the $25/mo Digital Entertainment credit.
+    </div>
+
+    <div class="tip-item" data-search="uber cash december bonus extra 20">
+      <span class="tip-tag money">MONEY</span>
+      <strong>December Uber Cash bonus:</strong> You get $20 in December instead of $15. Plan a nice Uber Eats dinner or rides to holiday events!
+    </div>
+
+    <div class="tip-item" data-search="uber one stacks uber cash platinum">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Uber One + Uber Cash stack:</strong> Pay for Uber One ($120/yr credit) with your Platinum, then use your monthly $15 Uber Cash on top. Uber One gives $0 delivery fees and 5% off rides/deliveries. Double dipping!
+    </div>
+
+    <div class="tip-item" data-search="airline credit united travelbank hack workaround">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Airline Credit hack:</strong> Select United as your airline and load funds into United TravelBank. As of early 2026, this still triggers the $200 airline fee credit. You can then use TravelBank funds for future United flights.
+    </div>
+
+    <div class="tip-item" data-search="airline credit delta ecredits pay with miles combine">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Delta strategy:</strong> Use Delta eCredits or SkyMiles (Pay with Miles) to cover part of a ticket, then charge the remainder ($250 or less) to your Platinum to trigger the airline fee credit.
+    </div>
+
+    <div class="tip-item" data-search="saks gift card small purchase strategy">
+      <span class="tip-tag action">ACTION</span>
+      <strong>Saks credit tip:</strong> Buy a small item or gift card at Saks to use the $50 semi-annual credit if you don't regularly shop there. Don't let it expire.
+    </div>
+
+    <div class="tip-item" data-search="enrollment required activate benefits app online">
+      <span class="tip-tag warning">WARNING</span>
+      <strong>ENROLL IN EVERY BENEFIT IMMEDIATELY.</strong> Most credits require enrollment before purchases will trigger statement credits. Go to your Amex account &rarr; Benefits &rarr; Enroll in each one. If you don't enroll, you get nothing.
+    </div>
+  </div>
+
+  <div class="tips-section">
+    <h2>ð¥ Gold Card Pro Tips</h2>
+
+    <div class="tip-item" data-search="gold dining credit grubhub pickup no delivery fee">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Use Grubhub for pickup orders</strong> to get the $10/mo dining credit without paying delivery fees. Or order from The Cheesecake Factory / Five Guys in person.
+    </div>
+
+    <div class="tip-item" data-search="gold uber cash platinum stack both cards">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Gold + Platinum Uber Cash stack:</strong> Link BOTH cards to the same Uber account. You'll get $15/mo from Platinum + $10/mo from Gold = $25/month in Uber Cash!
+    </div>
+
+    <div class="tip-item" data-search="gold 4x dining grocery supermarket points multiplier">
+      <span class="tip-tag money">MONEY</span>
+      <strong>4x MR points at restaurants and U.S. supermarkets</strong> (up to $25K/yr at supermarkets). This is on top of the dining credits. Use Gold for all dining/grocery spending.
+    </div>
+
+    <div class="tip-item" data-search="dunkin credit app reload order ahead">
+      <span class="tip-tag action">ACTION</span>
+      <strong>Dunkin' credit tip:</strong> Reload your Dunkin' app balance using your Gold Card to trigger the $7/mo credit. Or just pay at the register with your card.
+    </div>
+
+    <div class="tip-item" data-search="resy gold platinum both separate credits stack">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Resy stacking:</strong> Both your Gold ($100/yr) and Platinum ($400/yr) have separate Resy credits. That's <strong>$500/year in Resy dining</strong> combined. Use different cards at different Resy restaurants each quarter.
+    </div>
+  </div>
+
+  <div class="tips-section">
+    <h2>ð¢ Business Platinum Pro Tips</h2>
+
+    <div class="tip-item" data-search="dell credit shopping portal stack extra points miles cashback">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Dell credit + shopping portal:</strong> Buy through a shopping portal (like Rakuten) to earn extra cash back on top of your Dell credit and Amex points. Triple dip!
+    </div>
+
+    <div class="tip-item" data-search="dell credit accessories monitors keyboards not just computers">
+      <span class="tip-tag action">ACTION</span>
+      <strong>Dell sells more than computers:</strong> Use the $150 Dell credit on monitors, keyboards, mice, headsets, webcams, printers, or even home electronics. Check Dell.com/amex for deals.
+    </div>
+
+    <div class="tip-item" data-search="indeed credit even if not hiring business">
+      <span class="tip-tag action">ACTION</span>
+      <strong>Indeed credit ($360/yr):</strong> Even if you're not actively hiring, you can use Indeed credits for job postings, resume searches, or employer branding. Don't let $90/quarter go to waste.
+    </div>
+
+    <div class="tip-item" data-search="hilton business platinum quarterly hotel travel">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Hilton $200/yr credit:</strong> Use the $50/quarter for Hilton stays. This is separate from the FHR/Hotel Collection credit &mdash; you can use BOTH for different trips!
+    </div>
+
+    <div class="tip-item" data-search="wireless credit phone bill verizon att tmobile monthly">
+      <span class="tip-tag action">ACTION</span>
+      <strong>Wireless $120/yr:</strong> Just put your cell phone bill on the Business Platinum. $10/month automatically credits back. Works with Verizon, AT&T, T-Mobile, etc.
+    </div>
+
+    <div class="tip-item" data-search="adobe creative cloud annual subscription business trigger credit">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Adobe $250 credit:</strong> If you have Adobe Creative Cloud ($55/mo), you'll hit the $600 threshold in about 11 months and get $250 back. Effectively cuts your Adobe cost nearly in half.
+    </div>
+  </div>
+
+  <div class="tips-section">
+    <h2>ð¥ Cross-Card Mega Tips</h2>
+
+    <div class="tip-item" data-search="double clear credit both platinum business platinum">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Double CLEAR+ credit:</strong> Both your Platinum ($209) and Business Platinum ($209) offer CLEAR+ credits. Use one for yourself and the other for a family member's CLEAR+ membership!
+    </div>
+
+    <div class="tip-item" data-search="double global entry tsa precheck both cards family">
+      <span class="tip-tag stack">STACK</span>
+      <strong>Double Global Entry:</strong> Same idea &mdash; use both Platinum and Business Platinum Global Entry credits for two family members.
+    </div>
+
+    <div class="tip-item" data-search="double hotel credit fhr both platinum business stack">
+      <span class="tip-tag stack">STACK</span>
+      <strong>$1,200/year in hotel credits:</strong> Both your Platinum and Business Platinum offer $600/year in FHR/Hotel Collection credits. That's $1,200 combined for luxury hotel stays!
+    </div>
+
+    <div class="tip-item" data-search="total streaming free platinum digital entertainment walmart peacock">
+      <span class="tip-tag money">MONEY</span>
+      <strong>Free streaming empire:</strong> With your Platinum's $25/mo Digital Entertainment credit + Walmart+'s free Peacock/Paramount+, you can have YouTube TV ($73/mo partially covered), Disney+ Bundle, NYT, WSJ, AND Peacock/Paramount+ with most costs offset.
+    </div>
+  </div>
+</div>
+
+<!-- ===== ENROLLMENT CHECKLIST ===== -->
+<div class="card-section" id="section-enrollment">
+  <div class="enrollment-checklist">
+    <h2>â Enrollment Checklist &mdash; Do These NOW</h2>
+    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.85em;">Credits won't trigger unless you enroll first. Check off as you complete each one. Go to americanexpress.com &rarr; Benefits &rarr; Enroll.</p>
+
+    <div class="check-item"><input type="checkbox" id="e1"><label for="e1">Enroll in Resy Dining Credit</label><span class="check-card">Platinum + Gold</span></div>
+    <div class="check-item"><input type="checkbox" id="e2"><label for="e2">Enroll in Lululemon Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e3"><label for="e3">Enroll in Digital Entertainment Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e4"><label for="e4">Enroll in Walmart+ Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e5"><label for="e5">Enroll in Equinox Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e6"><label for="e6">Enroll in Uber One Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e7"><label for="e7">Enroll in OURA Ring Credit</label><span class="check-card">Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e8"><label for="e8">Select your airline for Airline Fee Credit</label><span class="check-card">Platinum + Biz Plat</span></div>
+    <div class="check-item"><input type="checkbox" id="e9"><label for="e9">Enroll in Dining Credit ($10/mo)</label><span class="check-card">Gold</span></div>
+    <div class="check-item"><input type="checkbox" id="e10"><label for="e10">Enroll in Dunkin' Credit</label><span class="check-card">Gold</span></div>
+    <div class="check-item"><input type="checkbox" id="e11"><label for="e11">Enroll in Dell Technologies Credit</label><span class="check-card">Biz Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e12"><label for="e12">Enroll in Indeed Credit</label><span class="check-card">Biz Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e13"><label for="e13">Enroll in Adobe Credit</label><span class="check-card">Biz Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e14"><label for="e14">Enroll in Hilton Credit</label><span class="check-card">Biz Platinum</span></div>
+    <div class="check-item"><input type="checkbox" id="e15"><label for="e15">Activate Peacock/Paramount+ inside Walmart+ Benefits Hub</label><span class="check-card">Via Walmart+</span></div>
+    <div class="check-item"><input type="checkbox" id="e16"><label for="e16">Link Platinum + Gold Uber Cash to same Uber account</label><span class="check-card">Platinum + Gold</span></div>
+    <div class="check-item"><input type="checkbox" id="e17"><label for="e17">Subscribe to streaming services DIRECTLY (not via Apple/Amazon)</label><span class="check-card">Platinum</span></div>
+  </div>
+</div>
+
+<!-- ===== RESET CALENDAR ===== -->
+<div class="card-section" id="section-calendar">
+  <div class="calendar-section">
+    <h2>ð Credit Reset Calendar &mdash; 2026</h2>
+    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.85em;">Key dates when credits reset or expire. Set reminders so you never lose a dollar.</p>
+
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-date">Every 1st</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Monthly resets:</strong> Uber Cash (Plat $15 + Gold $10), Digital Entertainment $25, Dunkin' $7, Gold Dining $10, Wireless $10, Walmart+ $12.95</div>
+          <div class="timeline-event" style="color:var(--red);">Uber Cash expires at end of each month &mdash; use it or lose it!</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Jan 1</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Annual resets:</strong> Airline Fee Credit (Plat + Biz Plat), Equinox Credit, CLEAR+ Credit (both cards), Uber One Credit, Dell Credit, Adobe Credit, Calendar year credits refresh</div>
+          <div class="timeline-event"><strong>Semi-annual resets:</strong> Hotel Credit H1 ($300), Saks H1 ($50), Resy Gold H1 ($50)</div>
+          <div class="timeline-event"><strong>Quarterly resets:</strong> Resy Plat Q1 ($100), Lululemon Q1 ($75), Indeed Q1 ($90), Hilton Q1 ($50)</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Apr 1</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Quarterly resets:</strong> Resy Plat Q2 ($100), Lululemon Q2 ($75), Indeed Q2 ($90), Hilton Q2 ($50)</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Jul 1</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Semi-annual resets:</strong> Hotel Credit H2 ($300 per card), Saks H2 ($50), Resy Gold H2 ($50)</div>
+          <div class="timeline-event"><strong>Quarterly resets:</strong> Resy Plat Q3 ($100), Lululemon Q3 ($75), Indeed Q3 ($90), Hilton Q3 ($50)</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Oct 1</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Quarterly resets:</strong> Resy Plat Q4 ($100), Lululemon Q4 ($75), Indeed Q4 ($90), Hilton Q4 ($50)</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Dec 1</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Uber Cash bonus:</strong> Platinum gets $20 (instead of $15) in December</div>
+          <div class="timeline-event" style="color:var(--red);"><strong>DEADLINE ALERT:</strong> Use all remaining quarterly Q4, semi-annual H2, and annual credits before Dec 31!</div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-date">Every 90 days</div>
+        <div class="timeline-events">
+          <div class="timeline-event"><strong>Walmart+ streaming:</strong> Re-select Peacock or Paramount+ every 90 days. Set a reminder to switch if desired!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'amex-dashboard-2026';
+
+  // ââ Helpers ââ
+  function getState() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function saveState(state) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function getCurrentQuarter() {
+    const m = new Date().getMonth(); // 0-11
+    return Math.floor(m / 3) + 1; // 1-4
+  }
+  function getCurrentHalf() {
+    return new Date().getMonth() < 6 ? 1 : 2;
+  }
+
+  // ââ Tab switching ââ
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.card-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('section-' + tabId).classList.add('active');
+    event.target.classList.add('active');
+    const state = getState();
+    state._activeTab = tabId;
+    saveState(state);
+  }
+
+  // ââ Single status badge (annual/monthly credits) ââ
+  function cycleStatus(el) {
+    const states = ['unused', 'partial', 'used'];
+    const labels = ['Not Used', 'Partial', 'Used'];
+    const current = states.indexOf(el.className.replace('status-badge ', '').trim());
+    const next = (current + 1) % states.length;
+    el.className = 'status-badge ' + states[next];
+    el.textContent = labels[next];
+
+    // Persist
+    const row = el.closest('.credit-row');
+    if (row && row.dataset.creditId) {
+      const state = getState();
+      state[row.dataset.creditId] = { type: 'single', value: states[next] };
+      saveState(state);
+    }
+  }
+
+  // ââ Period badge toggle (quarterly/semi-annual credits) ââ
+  function togglePeriod(el) {
+    const isUsed = el.classList.contains('used');
+    el.classList.toggle('used', !isUsed);
+    el.classList.toggle('unused', isUsed);
+    el.querySelector('.period-status').textContent = isUsed ? 'â' : 'â';
+
+    // Persist all periods in this row
+    const row = el.closest('.credit-row');
+    if (row && row.dataset.creditId) {
+      const state = getState();
+      const periods = {};
+      row.querySelectorAll('.period-badge').forEach(badge => {
+        const label = badge.querySelector('.period-label').textContent;
+        periods[label] = badge.classList.contains('used');
+      });
+      state[row.dataset.creditId] = { type: 'multi', periods };
+      saveState(state);
+    }
+
+    // Update current-period highlighting for this row
+    updateRowHighlight(row);
+  }
+
+  // ââ Checkbox persistence (enrollment checklist) ââ
+  function handleCheckbox(cb) {
+    const state = getState();
+    if (!state._checks) state._checks = {};
+    state._checks[cb.id] = cb.checked;
+    saveState(state);
+  }
+
+  // ââ Current-period highlighting ââ
+  function updateRowHighlight(row) {
+    if (!row) return;
+    const badges = row.querySelectorAll('.period-badge.current-period');
+    const hasUnused = Array.from(badges).some(b => b.classList.contains('unused'));
+    row.classList.toggle('has-unused-current', hasUnused);
+
+    // Update "USE NOW" tag
+    const h3 = row.querySelector('.credit-info h3');
+    const existing = h3.querySelector('.use-now-tag');
+    if (hasUnused && !existing) {
+      const tag = document.createElement('span');
+      tag.className = 'use-now-tag';
+      tag.textContent = 'Use Now';
+      h3.appendChild(tag);
+    } else if (!hasUnused && existing) {
+      existing.remove();
+    }
+  }
+
+  function getCurrentMonth() {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[new Date().getMonth()];
+  }
+
+  function applyCurrentPeriodHighlights() {
+    const q = getCurrentQuarter();
+    const h = getCurrentHalf();
+    const m = getCurrentMonth();
+
+    document.querySelectorAll('.period-badge').forEach(badge => {
+      const label = badge.querySelector('.period-label').textContent;
+      let isCurrent = false;
+
+      if (label === 'Q' + q) isCurrent = true;
+      if (label === 'H' + h) isCurrent = true;
+      if (label === m) isCurrent = true;
+
+      badge.classList.toggle('current-period', isCurrent);
+    });
+
+    // Update row-level highlights
+    document.querySelectorAll('.credit-row').forEach(row => {
+      updateRowHighlight(row);
+    });
+  }
+
+  // ââ Load saved state on page open ââ
+  function loadState() {
+    const state = getState();
+
+    // Restore credit statuses
+    document.querySelectorAll('.credit-row[data-credit-id]').forEach(row => {
+      const id = row.dataset.creditId;
+      const saved = state[id];
+      if (!saved) return;
+
+      if (saved.type === 'single') {
+        const badge = row.querySelector('.status-badge');
+        if (badge) {
+          badge.className = 'status-badge ' + saved.value;
+          const labels = { unused: 'Not Used', partial: 'Partial', used: 'Used' };
+          badge.textContent = labels[saved.value] || 'Not Used';
+        }
+      } else if (saved.type === 'multi') {
+        row.querySelectorAll('.period-badge').forEach(badge => {
+          const label = badge.querySelector('.period-label').textContent;
+          if (saved.periods && saved.periods[label] !== undefined) {
+            const isUsed = saved.periods[label];
+            badge.classList.toggle('used', isUsed);
+            badge.classList.toggle('unused', !isUsed);
+            badge.querySelector('.period-status').textContent = isUsed ? 'â' : 'â';
+          }
+        });
+      }
+    });
+
+    // Restore checkboxes
+    if (state._checks) {
+      Object.keys(state._checks).forEach(cbId => {
+        const cb = document.getElementById(cbId);
+        if (cb) cb.checked = state._checks[cbId];
+      });
+    }
+
+    // Restore active tab
+    if (state._activeTab) {
+      const tabBtn = Array.from(document.querySelectorAll('.tab')).find(t =>
+        t.textContent.toLowerCase().includes(state._activeTab.replace('bizplat','business'))
+        || t.getAttribute('onclick')?.includes(state._activeTab)
+      );
+      if (tabBtn) tabBtn.click();
+    }
+
+    // Apply current-period highlights
+    applyCurrentPeriodHighlights();
+  }
+
+  // ââ Search ââ
+  function filterAll() {
+    const query = document.getElementById('searchBar').value.toLowerCase();
+    document.querySelectorAll('.credit-row, .tip-item').forEach(el => {
+      const searchText = (el.getAttribute('data-search') || '') + ' ' + el.textContent.toLowerCase();
+      el.style.display = searchText.includes(query) ? '' : 'none';
+    });
+  }
+
+  // ââ Initialize ââ
+  document.addEventListener('DOMContentLoaded', () => {
+    // Attach checkbox listeners
+    document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => {
+      cb.addEventListener('change', () => handleCheckbox(cb));
+    });
+
+    // Load saved state
+    loadState();
+  });
+</script>
+
+</body>
+</html>
