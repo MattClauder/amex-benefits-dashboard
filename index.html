@@ -1141,7 +1141,7 @@
     const isUsed = el.classList.contains('used');
     el.classList.toggle('used', !isUsed);
     el.classList.toggle('unused', isUsed);
-    el.querySelector('.period-status').textContent = isUsed ? '&#10007;' : '&#10003;';
+    el.querySelector('.period-status').textContent = isUsed ? '\u2717' : '\u2713';
 
     // Persist all periods in this row
     const row = el.closest('.credit-row');
@@ -1239,7 +1239,7 @@
             const isUsed = saved.periods[label];
             badge.classList.toggle('used', isUsed);
             badge.classList.toggle('unused', !isUsed);
-            badge.querySelector('.period-status').textContent = isUsed ? '&#10003;' : '&#10007;';
+            badge.querySelector('.period-status').textContent = isUsed ? '\u2713' : '\u2717';
           }
         });
       }
