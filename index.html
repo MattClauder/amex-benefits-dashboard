@@ -1278,12 +1278,11 @@
   async function manualSync() {
     const cloud = await pullFromCloud();
     if (cloud) {
-      // Merge: cloud data is base, local overwrites
+      // Cloud wins - this is the latest shared state
       const local = getState();
-      const merged = Object.assign({}, cloud, local);
+      const merged = Object.assign({}, local, cloud);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       applyStateToUI(merged);
-      await pushToCloud(merged);
     } else {
       // No cloud data yet, push local
       await pushToCloud(getState());
@@ -1301,9 +1300,9 @@
     const cloud = await pullFromCloud();
     if (cloud) {
       const local = getState();
-      // If local is empty, use cloud. Otherwise merge (cloud base, local wins).
+      // Cloud wins on load - it's the latest shared state
       const hasLocal = Object.keys(local).filter(k => !k.startsWith('_')).length > 0;
-      const merged = hasLocal ? Object.assign({}, cloud, local) : cloud;
+      const merged = hasLocal ? Object.assign({}, local, cloud) : cloud;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       applyStateToUI(merged);
       if (hasLocal) await pushToCloud(merged);
