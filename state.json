@@ -1,11 +1,4 @@
 {
-  "plat-hotel": {
-    "type": "multi",
-    "periods": {
-      "H1": true,
-      "H2": false
-    }
-  },
   "plat-lulu": {
     "type": "multi",
     "periods": {
