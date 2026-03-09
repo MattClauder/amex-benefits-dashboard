@@ -1229,11 +1229,19 @@
     }
   }
 
-  async function pushToCloud(state) {
+  async function pushToCloud(state, _retry) {
     const token = getToken();
     if (!token) return;
     try {
       setSyncStatus('syncing', 'Uploading...');
+      // Always fetch latest SHA before pushing to avoid conflicts
+      try {
+        const current = await cloudFetch('contents/' + STATE_FILE);
+        if (current && current.sha) _fileSha = current.sha;
+      } catch (e) {
+        if (!e.message.includes('404')) throw e;
+        _fileSha = null; // File doesn't exist yet
+      }
       const content = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
       const body = {
         message: 'Sync dashboard state',
@@ -1247,17 +1255,17 @@
       _fileSha = result.content.sha;
       setSyncStatus('synced', 'Synced just now');
     } catch (e) {
-      // If SHA mismatch (409), re-pull and retry once
-      if (e.message.includes('409')) {
+      // If SHA mismatch (409) and haven't retried yet, try once more
+      if (e.message.includes('409') && !_retry) {
         const cloud = await pullFromCloud();
         if (cloud) {
-          // Merge: local wins for conflicts
           const merged = Object.assign({}, cloud, state);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          return pushToCloud(merged);
+          return pushToCloud(merged, true);
         }
       }
       setSyncStatus('error', 'Push failed: ' + e.message);
+      console.error('Sync push error:', e);
     }
   }
 
