@@ -1,0 +1,65 @@
+{
+  "plat-lulu": {
+    "type": "multi",
+    "periods": {
+      "Q1": true,
+      "Q2": false,
+      "Q3": false,
+      "Q4": false
+    }
+  },
+  "plat-uber-cash": {
+    "type": "multi",
+    "periods": {
+      "Jan": true,
+      "Feb": true,
+      "Mar": false,
+      "Apr": false,
+      "May": false,
+      "Jun": false,
+      "Jul": false,
+      "Aug": false,
+      "Sep": false,
+      "Oct": false,
+      "Nov": false,
+      "Dec": false
+    }
+  },
+  "plat-saks": {
+    "type": "multi",
+    "periods": {
+      "H1": true,
+      "H2": false
+    }
+  },
+  "plat-uber-one": {
+    "type": "single",
+    "value": "used"
+  },
+  "plat-walmart": {
+    "type": "single",
+    "value": "used"
+  },
+  "_activeTab": "calendar",
+  "gold-uber-cash": {
+    "type": "multi",
+    "periods": {
+      "Jan": true,
+      "Feb": true,
+      "Mar": false,
+      "Apr": false,
+      "May": false,
+      "Jun": false,
+      "Jul": false,
+      "Aug": false,
+      "Sep": false,
+      "Oct": false,
+      "Nov": false,
+      "Dec": false
+    }
+  },
+  "biz-dell": {
+    "type": "single",
+    "value": "partial"
+  }
+}
