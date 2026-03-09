@@ -1229,43 +1229,40 @@
     }
   }
 
-  async function pushToCloud(state, _retry) {
+  async function pushToCloud(state) {
     const token = getToken();
     if (!token) return;
-    try {
-      setSyncStatus('syncing', 'Uploading...');
-      // Always fetch latest SHA before pushing to avoid conflicts
+    setSyncStatus('syncing', 'Uploading...');
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+    for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const current = await cloudFetch('contents/' + STATE_FILE);
-        if (current && current.sha) _fileSha = current.sha;
-      } catch (e) {
-        if (!e.message.includes('404')) throw e;
-        _fileSha = null; // File doesn't exist yet
-      }
-      const content = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
-      const body = {
-        message: 'Sync dashboard state',
-        content: content
-      };
-      if (_fileSha) body.sha = _fileSha;
-      const result = await cloudFetch('contents/' + STATE_FILE, {
-        method: 'PUT',
-        body: JSON.stringify(body)
-      });
-      _fileSha = result.content.sha;
-      setSyncStatus('synced', 'Synced just now');
-    } catch (e) {
-      // If SHA mismatch (409) and haven't retried yet, try once more
-      if (e.message.includes('409') && !_retry) {
-        const cloud = await pullFromCloud();
-        if (cloud) {
-          const merged = Object.assign({}, cloud, state);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          return pushToCloud(merged, true);
+        // Fetch the latest SHA right before each PUT attempt
+        try {
+          const current = await cloudFetch('contents/' + STATE_FILE);
+          if (current && current.sha) _fileSha = current.sha;
+        } catch (e) {
+          if (!e.message.includes('404')) throw e;
+          _fileSha = null;
         }
+        const body = { message: 'Sync dashboard state', content: content };
+        if (_fileSha) body.sha = _fileSha;
+        const result = await cloudFetch('contents/' + STATE_FILE, {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        });
+        _fileSha = result.content.sha;
+        setSyncStatus('synced', 'Synced just now');
+        return; // success
+      } catch (e) {
+        if (e.message.includes('409') && attempt < 2) {
+          // SHA conflict, wait a moment and retry with fresh SHA
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+        setSyncStatus('error', 'Push failed: ' + e.message);
+        console.error('Sync push error:', e);
+        return;
       }
-      setSyncStatus('error', 'Push failed: ' + e.message);
-      console.error('Sync push error:', e);
     }
   }
 
