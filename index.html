@@ -389,9 +389,90 @@
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border);
   }
+
+  /* ── Sync UI ── */
+  .sync-indicator {
+    position: fixed; top: 12px; right: 12px; z-index: 1000;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sync-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #555; transition: background 0.3s;
+  }
+  .sync-dot.synced { background: var(--green); }
+  .sync-dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--red); }
+  .sync-dot.offline { background: #555; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .sync-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .sync-btn:hover { border-color: var(--text-muted); color: var(--text); }
+  .gear-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 18px; cursor: pointer; padding: 4px;
+  }
+  .gear-btn:hover { color: var(--text); }
+
+  /* Settings modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 2000; justify-content: center; align-items: center;
+  }
+  .modal-overlay.visible { display: flex; }
+  .modal-box {
+    background: var(--card-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; width: 90%; max-width: 420px;
+  }
+  .modal-box h2 { font-size: 18px; margin-bottom: 16px; }
+  .modal-box label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+  .modal-box input[type="password"], .modal-box input[type="text"] {
+    width: 100%; padding: 10px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 14px; margin-bottom: 14px;
+  }
+  .modal-box .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  .modal-box button {
+    padding: 8px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px;
+  }
+  .modal-box .btn-save { background: var(--green); color: #fff; }
+  .modal-box .btn-cancel { background: var(--border); color: var(--text); }
+  .modal-box .btn-disconnect { background: var(--red); color: #fff; font-size: 12px; padding: 6px 12px; }
+  .modal-box .helper { font-size: 11px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4; }
+  .modal-box .status-line { font-size: 12px; margin-bottom: 14px; padding: 8px; border-radius: 6px; background: var(--bg); }
+  .modal-box .status-line.connected { border-left: 3px solid var(--green); }
+  .modal-box .status-line.disconnected { border-left: 3px solid var(--text-muted); }
 </style>
 </head>
 <body>
+
+<!-- Sync indicator (top-right corner) -->
+<div class="sync-indicator" id="syncIndicator" style="display:none;">
+  <button class="sync-btn" onclick="manualSync()" title="Sync now">&#x21bb; Sync</button>
+  <div class="sync-dot offline" id="syncDot" title="Not connected"></div>
+  <button class="gear-btn" onclick="openSettings()" title="Sync settings">&#9881;</button>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal-box">
+    <h2>&#9881; Cloud Sync Settings</h2>
+    <div id="syncStatus" class="status-line disconnected">Not connected</div>
+    <label for="ghToken">GitHub Personal Access Token</label>
+    <input type="password" id="ghToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+    <div class="helper">
+      Create a token at GitHub &rarr; Settings &rarr; Developer settings &rarr; Personal access tokens &rarr; Fine-grained tokens.<br>
+      Give it <strong>read/write access to Contents</strong> on the <strong>amex-benefits-dashboard</strong> repo only.
+    </div>
+    <div class="btn-row">
+      <button class="btn-disconnect" id="btnDisconnect" onclick="disconnectSync()" style="display:none;">Disconnect</button>
+      <span style="flex:1"></span>
+      <button class="btn-cancel" onclick="closeSettings()">Cancel</button>
+      <button class="btn-save" onclick="saveSettings()">Save &amp; Sync</button>
+    </div>
+  </div>
+</div>
 
 <div class="header">
   <h1>Amex Benefits Dashboard</h1>
@@ -1089,25 +1170,191 @@
 
 <script>
   const STORAGE_KEY = 'amex-dashboard-2026';
+  const SYNC_TOKEN_KEY = 'amex-sync-token';
+  const REPO_OWNER = 'MattClauder';
+  const REPO_NAME = 'amex-benefits-dashboard';
+  const STATE_FILE = 'state.json';
+  let _syncDebounceTimer = null;
+  let _fileSha = null;
 
-  // &#9472;&#9472; Helpers &#9472;&#9472;
+  // ── Local state helpers ──
   function getState() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
     catch { return {}; }
   }
   function saveState(state) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    debouncedCloudSave(state);
   }
 
+  // ── GitHub sync engine ──
+  function getToken() { return localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
+
+  function setSyncStatus(status, text) {
+    const dot = document.getElementById('syncDot');
+    dot.className = 'sync-dot ' + status;
+    dot.title = text || status;
+  }
+
+  async function cloudFetch(path, opts) {
+    const token = getToken();
+    if (!token) return null;
+    const url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME + '/' + path;
+    const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' };
+    if (opts && opts.body) headers['Content-Type'] = 'application/json';
+    const resp = await fetch(url, Object.assign({ headers }, opts || {}));
+    if (!resp.ok) throw new Error('GitHub API ' + resp.status);
+    return resp.json();
+  }
+
+  async function pullFromCloud() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      setSyncStatus('syncing', 'Downloading...');
+      const data = await cloudFetch('contents/' + STATE_FILE);
+      _fileSha = data.sha;
+      const decoded = JSON.parse(atob(data.content.replace(/\n/g, '')));
+      setSyncStatus('synced', 'Synced');
+      return decoded;
+    } catch (e) {
+      if (e.message.includes('404')) {
+        // File doesn't exist yet, that's ok
+        _fileSha = null;
+        setSyncStatus('synced', 'Synced (no cloud data yet)');
+        return null;
+      }
+      setSyncStatus('error', 'Pull failed: ' + e.message);
+      return null;
+    }
+  }
+
+  async function pushToCloud(state) {
+    const token = getToken();
+    if (!token) return;
+    try {
+      setSyncStatus('syncing', 'Uploading...');
+      const content = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+      const body = {
+        message: 'Sync dashboard state',
+        content: content
+      };
+      if (_fileSha) body.sha = _fileSha;
+      const result = await cloudFetch('contents/' + STATE_FILE, {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
+      _fileSha = result.content.sha;
+      setSyncStatus('synced', 'Synced just now');
+    } catch (e) {
+      // If SHA mismatch (409), re-pull and retry once
+      if (e.message.includes('409')) {
+        const cloud = await pullFromCloud();
+        if (cloud) {
+          // Merge: local wins for conflicts
+          const merged = Object.assign({}, cloud, state);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          return pushToCloud(merged);
+        }
+      }
+      setSyncStatus('error', 'Push failed: ' + e.message);
+    }
+  }
+
+  function debouncedCloudSave(state) {
+    if (!getToken()) return;
+    clearTimeout(_syncDebounceTimer);
+    _syncDebounceTimer = setTimeout(() => pushToCloud(state), 1500);
+  }
+
+  async function manualSync() {
+    const cloud = await pullFromCloud();
+    if (cloud) {
+      // Merge: cloud data is base, local overwrites
+      const local = getState();
+      const merged = Object.assign({}, cloud, local);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      applyStateToUI(merged);
+      await pushToCloud(merged);
+    } else {
+      // No cloud data yet, push local
+      await pushToCloud(getState());
+    }
+  }
+
+  async function initialSync() {
+    const token = getToken();
+    if (!token) {
+      document.getElementById('syncIndicator').style.display = 'flex';
+      setSyncStatus('offline', 'Not connected - tap gear to set up');
+      return;
+    }
+    document.getElementById('syncIndicator').style.display = 'flex';
+    const cloud = await pullFromCloud();
+    if (cloud) {
+      const local = getState();
+      // If local is empty, use cloud. Otherwise merge (cloud base, local wins).
+      const hasLocal = Object.keys(local).filter(k => !k.startsWith('_')).length > 0;
+      const merged = hasLocal ? Object.assign({}, cloud, local) : cloud;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      applyStateToUI(merged);
+      if (hasLocal) await pushToCloud(merged);
+    }
+  }
+
+  // ── Settings modal ──
+  function openSettings() {
+    const modal = document.getElementById('settingsModal');
+    const input = document.getElementById('ghToken');
+    const token = getToken();
+    input.value = token || '';
+    document.getElementById('btnDisconnect').style.display = token ? 'inline-block' : 'none';
+    const statusEl = document.getElementById('syncStatus');
+    if (token) {
+      statusEl.className = 'status-line connected';
+      statusEl.textContent = 'Connected - syncing to GitHub';
+    } else {
+      statusEl.className = 'status-line disconnected';
+      statusEl.textContent = 'Not connected';
+    }
+    modal.classList.add('visible');
+  }
+  function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('visible');
+  }
+  async function saveSettings() {
+    const token = document.getElementById('ghToken').value.trim();
+    if (!token) { alert('Please enter a token'); return; }
+    localStorage.setItem(SYNC_TOKEN_KEY, token);
+    closeSettings();
+    document.getElementById('syncIndicator').style.display = 'flex';
+    // Test connection by pulling
+    try {
+      await pullFromCloud();
+      // Push current state to cloud
+      await pushToCloud(getState());
+    } catch (e) {
+      setSyncStatus('error', 'Connection failed');
+    }
+  }
+  function disconnectSync() {
+    localStorage.removeItem(SYNC_TOKEN_KEY);
+    _fileSha = null;
+    setSyncStatus('offline', 'Disconnected');
+    document.getElementById('btnDisconnect').style.display = 'none';
+    closeSettings();
+  }
+
+  // ── Helpers ──
   function getCurrentQuarter() {
-    const m = new Date().getMonth(); // 0-11
-    return Math.floor(m / 3) + 1; // 1-4
+    const m = new Date().getMonth();
+    return Math.floor(m / 3) + 1;
   }
   function getCurrentHalf() {
     return new Date().getMonth() < 6 ? 1 : 2;
   }
 
-  // &#9472;&#9472; Tab switching &#9472;&#9472;
+  // ── Tab switching ──
   function switchTab(tabId) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.card-section').forEach(s => s.classList.remove('active'));
@@ -1118,7 +1365,7 @@
     saveState(state);
   }
 
-  // &#9472;&#9472; Single status badge (annual/monthly credits) &#9472;&#9472;
+  // ── Single status badge (annual/monthly credits) ──
   function cycleStatus(el) {
     const states = ['unused', 'partial', 'used'];
     const labels = ['Not Used', 'Partial', 'Used'];
@@ -1126,8 +1373,6 @@
     const next = (current + 1) % states.length;
     el.className = 'status-badge ' + states[next];
     el.textContent = labels[next];
-
-    // Persist
     const row = el.closest('.credit-row');
     if (row && row.dataset.creditId) {
       const state = getState();
@@ -1136,14 +1381,12 @@
     }
   }
 
-  // &#9472;&#9472; Period badge toggle (quarterly/semi-annual credits) &#9472;&#9472;
+  // ── Period badge toggle (quarterly/semi-annual credits) ──
   function togglePeriod(el) {
     const isUsed = el.classList.contains('used');
     el.classList.toggle('used', !isUsed);
     el.classList.toggle('unused', isUsed);
     el.querySelector('.period-status').textContent = isUsed ? '\u2717' : '\u2713';
-
-    // Persist all periods in this row
     const row = el.closest('.credit-row');
     if (row && row.dataset.creditId) {
       const state = getState();
@@ -1155,12 +1398,10 @@
       state[row.dataset.creditId] = { type: 'multi', periods };
       saveState(state);
     }
-
-    // Update current-period highlighting for this row
     updateRowHighlight(row);
   }
 
-  // &#9472;&#9472; Checkbox persistence (enrollment checklist) &#9472;&#9472;
+  // ── Checkbox persistence (enrollment checklist) ──
   function handleCheckbox(cb) {
     const state = getState();
     if (!state._checks) state._checks = {};
@@ -1168,14 +1409,12 @@
     saveState(state);
   }
 
-  // &#9472;&#9472; Current-period highlighting &#9472;&#9472;
+  // ── Current-period highlighting ──
   function updateRowHighlight(row) {
     if (!row) return;
     const badges = row.querySelectorAll('.period-badge.current-period');
     const hasUnused = Array.from(badges).some(b => b.classList.contains('unused'));
     row.classList.toggle('has-unused-current', hasUnused);
-
-    // Update "USE NOW" tag
     const h3 = row.querySelector('.credit-info h3');
     const existing = h3.querySelector('.use-now-tag');
     if (hasUnused && !existing) {
@@ -1197,34 +1436,25 @@
     const q = getCurrentQuarter();
     const h = getCurrentHalf();
     const m = getCurrentMonth();
-
     document.querySelectorAll('.period-badge').forEach(badge => {
       const label = badge.querySelector('.period-label').textContent;
       let isCurrent = false;
-
       if (label === 'Q' + q) isCurrent = true;
       if (label === 'H' + h) isCurrent = true;
       if (label === m) isCurrent = true;
-
       badge.classList.toggle('current-period', isCurrent);
     });
-
-    // Update row-level highlights
     document.querySelectorAll('.credit-row').forEach(row => {
       updateRowHighlight(row);
     });
   }
 
-  // &#9472;&#9472; Load saved state on page open &#9472;&#9472;
-  function loadState() {
-    const state = getState();
-
-    // Restore credit statuses
+  // ── Apply state object to UI (used by sync) ──
+  function applyStateToUI(state) {
     document.querySelectorAll('.credit-row[data-credit-id]').forEach(row => {
       const id = row.dataset.creditId;
       const saved = state[id];
       if (!saved) return;
-
       if (saved.type === 'single') {
         const badge = row.querySelector('.status-badge');
         if (badge) {
@@ -1244,16 +1474,19 @@
         });
       }
     });
-
-    // Restore checkboxes
     if (state._checks) {
       Object.keys(state._checks).forEach(cbId => {
         const cb = document.getElementById(cbId);
         if (cb) cb.checked = state._checks[cbId];
       });
     }
+    applyCurrentPeriodHighlights();
+  }
 
-    // Restore active tab
+  // ── Load saved state on page open ──
+  function loadState() {
+    const state = getState();
+    applyStateToUI(state);
     if (state._activeTab) {
       const tabBtn = Array.from(document.querySelectorAll('.tab')).find(t =>
         t.textContent.toLowerCase().includes(state._activeTab.replace('bizplat','business'))
@@ -1261,12 +1494,9 @@
       );
       if (tabBtn) tabBtn.click();
     }
-
-    // Apply current-period highlights
-    applyCurrentPeriodHighlights();
   }
 
-  // &#9472;&#9472; Search &#9472;&#9472;
+  // ── Search ──
   function filterAll() {
     const query = document.getElementById('searchBar').value.toLowerCase();
     document.querySelectorAll('.credit-row, .tip-item').forEach(el => {
@@ -1275,18 +1505,17 @@
     });
   }
 
-  // &#9472;&#9472; Initialize &#9472;&#9472;
+  // ── Initialize ──
   document.addEventListener('DOMContentLoaded', () => {
-    // Attach checkbox listeners
     document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => handleCheckbox(cb));
     });
-
-    // Load saved state
     loadState();
+    // Show sync indicator and attempt cloud sync
+    document.getElementById('syncIndicator').style.display = 'flex';
+    initialSync();
   });
 </script>
 
 </body>
 </html>
-
