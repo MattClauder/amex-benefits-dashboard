@@ -20,7 +20,7 @@
     "periods": {
       "Jan": true,
       "Feb": true,
-      "Mar": true,
+      "Mar": false,
       "Apr": false,
       "May": false,
       "Jun": false,
@@ -47,7 +47,7 @@
     "type": "single",
     "value": "used"
   },
-  "_activeTab": "bizplat",
+  "_activeTab": "platinum",
   "gold-uber-cash": {
     "type": "multi",
     "periods": {
