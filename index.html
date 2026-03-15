@@ -1191,30 +1191,41 @@
     const labels = ['Not Used', 'Partial', 'Used'];
     const current = states.indexOf(el.className.replace('status-badge ', '').trim());
     const next = (current + 1) % states.length;
+
+    // Update DOM immediately
     el.className = 'status-badge ' + states[next];
     el.textContent = labels[next];
+
     const row = el.closest('.credit-row');
     if (row && row.dataset.creditId) {
+      const creditId = row.dataset.creditId;
+
+      // Read from state, update ONLY this credit — never scan DOM
       const state = getState();
-      state[row.dataset.creditId] = { type: 'single', value: states[next] };
+      state[creditId] = { type: 'single', value: states[next] };
       saveState(state);
     }
   }
 
   function togglePeriod(el) {
     const isUsed = el.classList.contains('used');
-    el.classList.toggle('used', !isUsed);
-    el.classList.toggle('unused', isUsed);
-    el.querySelector('.period-status').textContent = isUsed ? '\u2717' : '\u2713';
+    const newUsed = !isUsed;
+
+    // Update DOM immediately for responsiveness
+    el.classList.toggle('used', newUsed);
+    el.classList.toggle('unused', !newUsed);
+    el.querySelector('.period-status').textContent = newUsed ? '\u2713' : '\u2717';
+
     const row = el.closest('.credit-row');
     if (row && row.dataset.creditId) {
+      const creditId = row.dataset.creditId;
+      const label = el.querySelector('.period-label').textContent;
+
+      // Read from state, update ONLY this specific period — never scan DOM
       const state = getState();
-      const periods = {};
-      row.querySelectorAll('.period-badge').forEach(badge => {
-        const label = badge.querySelector('.period-label').textContent;
-        periods[label] = badge.classList.contains('used');
-      });
-      state[row.dataset.creditId] = { type: 'multi', periods };
+      if (!state[creditId]) state[creditId] = { type: 'multi', periods: {} };
+      if (!state[creditId].periods) state[creditId].periods = {};
+      state[creditId].periods[label] = newUsed;
       saveState(state);
     }
     updateRowHighlight(row);
