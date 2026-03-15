@@ -2,7 +2,7 @@
   "plat-hotel": {
     "type": "multi",
     "periods": {
-      "H1": false,
+      "H1": true,
       "H2": false
     }
   },
@@ -47,7 +47,7 @@
     "type": "single",
     "value": "used"
   },
-  "_activeTab": "platinum",
+  "_activeTab": "tips",
   "gold-uber-cash": {
     "type": "multi",
     "periods": {
