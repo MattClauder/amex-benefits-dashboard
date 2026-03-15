@@ -1068,54 +1068,44 @@
   async function pushToCloud(state) {
     const token = getToken();
     if (!token) return;
-    setSyncStatus('syncing', 'Uploading...');
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+    setSyncStatus('syncing', 'Saving...');
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
+    // Retry up to 3 times — each attempt fetches a fresh SHA to avoid conflicts
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
+        // Always fetch fresh SHA before pushing — prevents 409 conflicts
+        let fileSha = null;
         try {
           const current = await cloudFetch('contents/' + STATE_FILE);
-          if (current && current.sha) _fileSha = current.sha;
-        } catch (e) {
+          fileSha = current.sha;
+        } catch(e) {
           if (!e.message.includes('404')) throw e;
-          _fileSha = null;
         }
-        const body = { message: 'Sync dashboard state', content: content };
-        if (_fileSha) body.sha = _fileSha;
-        const result = await cloudFetch('contents/' + STATE_FILE, { method: 'PUT', body: JSON.stringify(body) });
-        _fileSha = result.content.sha;
-        setSyncStatus('synced', 'Synced just now');
-        return;
-      } catch (e) {
-        if (e.message.includes('409') && attempt < 2) { await new Promise(r => setTimeout(r, 500)); continue; }
-        setSyncStatus('error', 'Push failed: ' + e.message);
-        return;
+        const body = { message: 'Sync dashboard state', content: encoded };
+        if (fileSha) body.sha = fileSha;
+        await cloudFetch('contents/' + STATE_FILE, { method: 'PUT', body: JSON.stringify(body) });
+        setSyncStatus('synced', 'Saved');
+        return; // success
+      } catch(e) {
+        if (attempt < 2) {
+          // Wait 300ms and retry
+          await new Promise(r => setTimeout(r, 300));
+          continue;
+        }
+        setSyncStatus('error', 'Save failed');
+        console.error('pushToCloud failed after 3 attempts:', e);
       }
     }
   }
 
   let _saveTimer = null;
-  let _isSaving = false;
-  let _pendingSave = false;
 
   function debouncedCloudSave() {
-    // Debounce: wait 600ms after last change, then push the latest state once
+    // Cancel any pending save, wait 800ms for more clicks, then push latest state once
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(async () => {
-      if (_isSaving) {
-        // Another save is in progress — mark pending and it will re-run after
-        _pendingSave = true;
-        return;
-      }
-      _isSaving = true;
-      _pendingSave = false;
+    _saveTimer = setTimeout(async function() {
       await pushToCloud(getState());
-      _isSaving = false;
-      // If another save was requested while we were saving, do it now
-      if (_pendingSave) {
-        _pendingSave = false;
-        debouncedCloudSave();
-      }
-    }, 600);
+    }, 800);
   }
 
   async function manualSync() {
