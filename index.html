@@ -1093,9 +1093,15 @@
     }
   }
 
+  let _saveTimer = null;
   function debouncedCloudSave(state) {
-    // Push immediately — no debounce delay so changes sync before user refreshes
-    pushToCloud(state);
+    // Debounce: wait 400ms after last change, then push once
+    // This prevents race conditions when multiple badges are clicked rapidly
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      // Always push the LATEST state, not the state at click time
+      pushToCloud(getState());
+    }, 400);
   }
 
   async function manualSync() {
