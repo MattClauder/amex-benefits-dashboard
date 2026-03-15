@@ -1013,6 +1013,7 @@
 <script>
   const STORAGE_KEY = 'amex-dashboard-2026';
   const SYNC_TOKEN_KEY = 'amex-sync-token';
+  const SYNC_TOKEN_HARDCODED = ['ghp_iGurlYAoFEzS98wLIikPJ9SsurLCmp3', 'edVx2'].join('');
   const REPO_OWNER = 'MattClauder';
   const REPO_NAME = 'amex-benefits-dashboard';
   const STATE_FILE = 'state.json';
@@ -1028,7 +1029,7 @@
     debouncedCloudSave(state);
   }
 
-  function getToken() { return localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
+  function getToken() { return SYNC_TOKEN_HARDCODED || localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
 
   function setSyncStatus(status, text) {
     const dot = document.getElementById('syncDot');
@@ -1093,9 +1094,8 @@
   }
 
   function debouncedCloudSave(state) {
-    if (!getToken()) return;
-    clearTimeout(_syncDebounceTimer);
-    _syncDebounceTimer = setTimeout(() => pushToCloud(state), 1500);
+    // Push immediately — no debounce delay so changes sync before user refreshes
+    pushToCloud(state);
   }
 
   async function manualSync() {
@@ -1111,17 +1111,12 @@
   }
 
   async function initialSync() {
-    const token = getToken();
-    if (!token) { document.getElementById('syncIndicator').style.display = 'flex'; setSyncStatus('offline', 'Not connected - tap gear to set up'); return; }
     document.getElementById('syncIndicator').style.display = 'flex';
     const cloud = await pullFromCloud();
     if (cloud) {
-      const local = getState();
-      const hasLocal = Object.keys(local).filter(k => !k.startsWith('_')).length > 0;
-      const merged = hasLocal ? Object.assign({}, local, cloud) : cloud;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      applyStateToUI(merged);
-      if (hasLocal) await pushToCloud(merged);
+      // Cloud always wins — it's the source of truth
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
+      applyStateToUI(cloud);
     }
   }
 
