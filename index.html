@@ -1026,7 +1026,7 @@
   }
   function saveState(state) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    debouncedCloudSave(state);
+    debouncedCloudSave();
   }
 
   function getToken() { return SYNC_TOKEN_HARDCODED || localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
@@ -1094,14 +1094,28 @@
   }
 
   let _saveTimer = null;
-  function debouncedCloudSave(state) {
-    // Debounce: wait 400ms after last change, then push once
-    // This prevents race conditions when multiple badges are clicked rapidly
+  let _isSaving = false;
+  let _pendingSave = false;
+
+  function debouncedCloudSave() {
+    // Debounce: wait 600ms after last change, then push the latest state once
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => {
-      // Always push the LATEST state, not the state at click time
-      pushToCloud(getState());
-    }, 400);
+    _saveTimer = setTimeout(async () => {
+      if (_isSaving) {
+        // Another save is in progress — mark pending and it will re-run after
+        _pendingSave = true;
+        return;
+      }
+      _isSaving = true;
+      _pendingSave = false;
+      await pushToCloud(getState());
+      _isSaving = false;
+      // If another save was requested while we were saving, do it now
+      if (_pendingSave) {
+        _pendingSave = false;
+        debouncedCloudSave();
+      }
+    }, 600);
   }
 
   async function manualSync() {
