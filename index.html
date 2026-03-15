@@ -1114,10 +1114,12 @@
     document.getElementById('syncIndicator').style.display = 'flex';
     const cloud = await pullFromCloud();
     if (cloud) {
-      // Cloud always wins — clear localStorage first then apply fresh cloud state
-      localStorage.removeItem(STORAGE_KEY);
+      // Cloud always wins — overwrite localStorage with fresh cloud state
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
       applyStateToUI(cloud);
+    } else {
+      // Cloud failed — fall back to localStorage
+      loadState();
     }
   }
 
@@ -1288,7 +1290,8 @@
     document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => handleCheckbox(cb));
     });
-    loadState();
+    // Don't call loadState() — cloud is always the source of truth
+    // initialSync fetches from GitHub API with cache:no-store and applies to UI
     document.getElementById('syncIndicator').style.display = 'flex';
     initialSync();
   });
