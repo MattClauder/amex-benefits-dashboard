@@ -1043,7 +1043,7 @@
     const url = 'https://api.github.com/repos/' + REPO_OWNER + '/' + REPO_NAME + '/' + path;
     const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github.v3+json' };
     if (opts && opts.body) headers['Content-Type'] = 'application/json';
-    const resp = await fetch(url, Object.assign({ headers }, opts || {}));
+    const resp = await fetch(url, Object.assign({ headers, cache: 'no-store' }, opts || {}));
     if (!resp.ok) throw new Error('GitHub API ' + resp.status);
     return resp.json();
   }
@@ -1114,7 +1114,8 @@
     document.getElementById('syncIndicator').style.display = 'flex';
     const cloud = await pullFromCloud();
     if (cloud) {
-      // Cloud always wins — it's the source of truth
+      // Cloud always wins — clear localStorage first then apply fresh cloud state
+      localStorage.removeItem(STORAGE_KEY);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
       applyStateToUI(cloud);
     }
