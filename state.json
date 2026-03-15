@@ -2,7 +2,7 @@
   "plat-hotel": {
     "type": "multi",
     "periods": {
-      "H1": true,
+      "H1": false,
       "H2": false
     }
   },
