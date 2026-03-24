@@ -68,5 +68,11 @@
   "biz-dell": {
     "type": "single",
     "value": "partial"
+  },
+  "biz-hotel": {
+    "type": "multi",
+    "periods": {
+      "H1": true
+    }
   }
 }
