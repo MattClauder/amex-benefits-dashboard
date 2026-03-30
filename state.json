@@ -74,5 +74,11 @@
     "periods": {
       "H1": true
     }
+  },
+  "gold-dining": {
+    "type": "multi",
+    "periods": {
+      "Mar": true
+    }
   }
 }
