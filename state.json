@@ -80,5 +80,11 @@
     "periods": {
       "Mar": true
     }
+  },
+  "plat-resy": {
+    "type": "multi",
+    "periods": {
+      "Q1": true
+    }
   }
 }
