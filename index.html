@@ -77,14 +77,14 @@
   button, input, select, textarea { font-family: inherit; }
   button { cursor: pointer; }
 
-  /* ── Wrapper ── */
+  /* ââ Wrapper ââ */
   .wrap {
     max-width: 860px;
     margin: 0 auto;
     padding: 0 20px;
   }
 
-  /* ── Sync ── */
+  /* ââ Sync ââ */
   .sync-indicator {
     position: fixed; top: 14px; right: 16px; z-index: 1000;
     display: flex; align-items: center; gap: 8px;
@@ -145,7 +145,7 @@
   .modal-box .status-line.connected { border-left: 3px solid var(--green); }
   .modal-box .status-line.disconnected { border-left: 3px solid var(--text3); }
 
-  /* ── Header ── */
+  /* ââ Header ââ */
   .header {
     padding-top: 36px;
     padding-bottom: 28px;
@@ -166,7 +166,7 @@
     font-size: 12px; color: var(--text3); margin-top: 6px; font-family: var(--mono);
   }
 
-  /* ── Summary Grid ── */
+  /* ââ Summary Grid ââ */
   .summary-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -194,7 +194,7 @@
   .sc-value.red { color: var(--red); }
   .sc-value.amber { color: var(--amber); }
 
-  /* ── Search ── */
+  /* ââ Search ââ */
   .search-wrap { margin-bottom: 20px; }
   .search-bar {
     width: 100%; padding: 11px 16px;
@@ -206,7 +206,7 @@
   .search-bar::placeholder { color: var(--text3); }
   .search-bar:focus { border-color: var(--amber-border); }
 
-  /* ── Tabs ── */
+  /* ââ Tabs ââ */
   .tabs {
     display: flex; gap: 6px; margin-bottom: 24px; flex-wrap: wrap;
   }
@@ -225,7 +225,7 @@
   .card-section { display: none; }
   .card-section.active { display: block; }
 
-  /* ── Card Banner ── */
+  /* ââ Card Banner ââ */
   .card-banner {
     border-radius: var(--radius); padding: 24px 26px;
     margin-bottom: 20px; position: relative; overflow: hidden;
@@ -264,14 +264,14 @@
   .card-banner.gold .cb-total-amount { color: #fff; }
   .card-banner.bizplat .cb-total-amount { color: #e8e4e0; }
 
-  /* ── Section label ── */
+  /* ââ Section label ââ */
   .section-label {
     font-size: 10px; font-weight: 500; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--text3); margin-bottom: 10px;
     padding-bottom: 8px; border-bottom: 1px solid var(--border2);
   }
 
-  /* ── Credits grid ── */
+  /* ââ Credits grid ââ */
   .credits-grid { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
 
   .credit-row {
@@ -355,7 +355,7 @@
     border: 1px solid var(--amber-border); margin-left: 7px; vertical-align: middle;
   }
 
-  /* ── Tips ── */
+  /* ââ Tips ââ */
   .tips-section {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px 24px; margin-bottom: 16px;
@@ -382,7 +382,7 @@
   .tip-tag.warning { background: var(--red-bg); color: var(--red); border-color: var(--red-border); }
   .tip-tag.stack { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-border); }
 
-  /* ── Enrollment ── */
+  /* ââ Enrollment ââ */
   .enrollment-checklist {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px 24px; margin-bottom: 24px;
@@ -410,7 +410,7 @@
     font-family: var(--mono); white-space: nowrap;
   }
 
-  /* ── Calendar ── */
+  /* ââ Calendar ââ */
   .calendar-section {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 22px 24px; margin-bottom: 24px;
@@ -438,10 +438,10 @@
   .timeline-event strong { color: var(--text2); }
   .timeline-event.urgent { color: var(--red); }
 
-  /* ── Hidden / util ── */
+  /* ââ Hidden / util ââ */
   .hidden { display: none !important; }
 
-  /* ── Responsive ── */
+  /* ââ Responsive ââ */
   @media (max-width: 700px) {
     .summary-grid { grid-template-columns: 1fr 1fr; }
     .credit-row {
@@ -1029,7 +1029,7 @@
     debouncedCloudSave();
   }
 
-  function getToken() { return SYNC_TOKEN_HARDCODED || localStorage.getItem(SYNC_TOKEN_KEY) || ''; }
+  function getToken() { return localStorage.getItem(SYNC_TOKEN_KEY) || SYNC_TOKEN_HARDCODED || ''; }
 
   function setSyncStatus(status, text) {
     const dot = document.getElementById('syncDot');
@@ -1070,10 +1070,10 @@
     if (!token) return;
     setSyncStatus('syncing', 'Saving...');
     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state, null, 2))));
-    // Retry up to 3 times — each attempt fetches a fresh SHA to avoid conflicts
+    // Retry up to 3 times â each attempt fetches a fresh SHA to avoid conflicts
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        // Always fetch fresh SHA before pushing — prevents 409 conflicts
+        // Always fetch fresh SHA before pushing â prevents 409 conflicts
         let fileSha = null;
         try {
           const current = await cloudFetch('contents/' + STATE_FILE);
@@ -1124,11 +1124,11 @@
     document.getElementById('syncIndicator').style.display = 'flex';
     const cloud = await pullFromCloud();
     if (cloud) {
-      // Cloud always wins — overwrite localStorage with fresh cloud state
+      // Cloud always wins â overwrite localStorage with fresh cloud state
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cloud));
       applyStateToUI(cloud);
     } else {
-      // Cloud failed — fall back to localStorage
+      // Cloud failed â fall back to localStorage
       loadState();
     }
   }
@@ -1190,7 +1190,7 @@
     if (row && row.dataset.creditId) {
       const creditId = row.dataset.creditId;
 
-      // Read from state, update ONLY this credit — never scan DOM
+      // Read from state, update ONLY this credit â never scan DOM
       const state = getState();
       state[creditId] = { type: 'single', value: states[next] };
       saveState(state);
@@ -1211,7 +1211,7 @@
       const creditId = row.dataset.creditId;
       const label = el.querySelector('.period-label').textContent;
 
-      // Read from state, update ONLY this specific period — never scan DOM
+      // Read from state, update ONLY this specific period â never scan DOM
       const state = getState();
       if (!state[creditId]) state[creditId] = { type: 'multi', periods: {} };
       if (!state[creditId].periods) state[creditId].periods = {};
@@ -1311,7 +1311,7 @@
     document.querySelectorAll('.check-item input[type="checkbox"]').forEach(cb => {
       cb.addEventListener('change', () => handleCheckbox(cb));
     });
-    // Don't call loadState() — cloud is always the source of truth
+    // Don't call loadState() â cloud is always the source of truth
     // initialSync fetches from GitHub API with cache:no-store and applies to UI
     document.getElementById('syncIndicator').style.display = 'flex';
     initialSync();
